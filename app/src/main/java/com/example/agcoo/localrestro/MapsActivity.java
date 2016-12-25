@@ -1,9 +1,8 @@
 package com.example.agcoo.localrestro;
 
 
-import android.Manifest;
 import android.content.Context;
-import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Criteria;
 import android.location.Location;
@@ -15,13 +14,17 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.widget.Toast;
 
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.Places;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
@@ -40,10 +43,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,GoogleApiClient.ConnectionCallbacks,GoogleApiClient.OnConnectionFailedListener,LocationListener {
 
     private GoogleMap mMap;
     FloatingActionButton fab_plus,fab_restaurant;
@@ -53,7 +57,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     boolean isOpen = false;
     boolean gps_enabled = false;
     boolean network_enabled = false;
-    private final int MY_PERMISSION_ACCESS_FINE_LOCATION=1;
+    Timer timer;
+    private static final String TAG = MapsActivity.class.getSimpleName();
+    private CameraPosition mCameraPosition;
+    private GoogleApiClient mGoogleApiClient;
+    private LocationRequest mLocationRequest;
+    private static final long UPDATE_INTERVAL_IN_MILLISECONDS = 8000;
+    private static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
+            UPDATE_INTERVAL_IN_MILLISECONDS / 2;
+    private static final int DEFAULT_ZOOM = 15;
+    private static final int PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1;
+    private boolean mLocationPermissionGranted;
+    private Location mCurrentLocation;
+    private static final String KEY_CAMERA_POSITION = "camera_position";
+    private static final String KEY_LOCATION = "location";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,8 +108,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         });
 
-        setUpMapIfNeeded();
-
         fab_restaurant.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -101,7 +117,71 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 restaurantTask.execute(sbValue.toString());
             }
         });
+        if (savedInstanceState != null) {
+            mCurrentLocation = savedInstanceState.getParcelable(KEY_LOCATION);
+            mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
+        }
+        // Retrieve the content view that renders the map.
+        // Build the Play services client for use by the Fused Location Provider and the Places API.
+        buildGoogleApiClient();
+        mGoogleApiClient.connect();
 
+
+    }
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        if (mMap != null) {
+            outState.putParcelable(KEY_CAMERA_POSITION, mMap.getCameraPosition());
+            outState.putParcelable(KEY_LOCATION, mCurrentLocation);
+            super.onSaveInstanceState(outState);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        timer = new Timer();
+        timer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mGoogleApiClient.isConnected()) {
+                            getCurrentLocation();
+                        }
+                        setUpMapIfNeeded();
+                    }
+                });
+            }
+        },5000,5000);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        finish();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (mGoogleApiClient.isConnected()) {
+            LocationServices.FusedLocationApi.removeLocationUpdates(
+                    mGoogleApiClient, this);
+        }
+        timer.cancel();
+        timer.purge();
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        Intent setIntent = new Intent(Intent.ACTION_MAIN);
+        setIntent.addCategory(Intent.CATEGORY_HOME);
+        setIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(setIntent);
     }
 
     private void setUpMapIfNeeded() {
@@ -116,30 +196,56 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
+    @Override
+    public void onConnected(Bundle connectionHint) {
+        getCurrentLocation();
+        // Build the map.
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
+    }
+
+    @Override
+    public void onConnectionFailed(@NonNull ConnectionResult result) {
+        // Refer to the reference doc for ConnectionResult to see what error codes might
+        // be returned in onConnectionFailed.
+        Log.d(TAG, "Play services connection failed: ConnectionResult.getErrorCode() = "
+                + result.getErrorCode());
+    }
+
+    @Override
+    public void onConnectionSuspended(int cause) {
+        Log.d(TAG, "Play services connection suspended");
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        mCurrentLocation = location;
+    }
 
 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        /*mMap.addMarker(new MarkerOptions().position(new LatLng(0, 0)).title("Marker"));*/
-
-
-        /*LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        Criteria criteria = new Criteria();
-        Location location = locationManager.getLastKnownLocation(locationManager.getBestProvider(criteria, false));*/
-        Location location = getCurrentLocation();
-        if (location != null) {
-            mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 13));
-
-            CameraPosition cameraPosition = new CameraPosition.Builder()
-                    .target(new LatLng(location.getLatitude(), location.getLongitude()))      // Sets the center of the map to location user
-                    .zoom(17)                   // Sets the zoom
-                    .bearing(90)                // Sets the orientation of the camera to east
-                    .tilt(40)                   // Sets the tilt of the camera to 30 degrees
-                    .build();                   // Creates a CameraPosition from the builder
-            mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        updateLocationUI();
+        /*
+         * Set the map's camera position to the current location of the device.
+         * If the previous state was saved, set the position to the saved state.
+         * If the current location is unknown, use a default position and zoom value.
+         */
+        if (mCameraPosition != null) {
+            mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
+        } else if (mCurrentLocation != null) {
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(mCurrentLocation.getLatitude(),
+                            mCurrentLocation.getLongitude()), DEFAULT_ZOOM));
+        } else {
+            Log.d(TAG, "Current location is null. Using defaults.");
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(0,0), DEFAULT_ZOOM));
+            mMap.getUiSettings().setMyLocationButtonEnabled(false);
         }
     }
+
     public StringBuilder placesApiForRestaurant() {
 
         Location currentLocation = getCurrentLocation();
@@ -155,56 +261,83 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         return sb;
     }
-    private void showGPSPermission() {
-        int permissionCheck = ContextCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_FINE_LOCATION);
-        if (permissionCheck != PackageManager.PERMISSION_GRANTED) {
-            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
-                    Manifest.permission.ACCESS_FINE_LOCATION)) {
-                showExplanation("Permission Needed", "Rational", Manifest.permission.ACCESS_FINE_LOCATION, MY_PERMISSION_ACCESS_FINE_LOCATION);
-            } else {
-                requestPermissions(new String[]{Manifest.permission.READ_PHONE_STATE}, MY_PERMISSION_ACCESS_FINE_LOCATION);
-            }
-        } else {
-            Toast.makeText(this, "Permission (already) Granted!", Toast.LENGTH_SHORT).show();
-        }
+
+    private synchronized void buildGoogleApiClient() {
+        mGoogleApiClient = new GoogleApiClient.Builder(this)
+                .enableAutoManage(this /* FragmentActivity */,
+                        this /* OnConnectionFailedListener */)
+                .addConnectionCallbacks(this)
+                .addApi(LocationServices.API)
+                .addApi(Places.GEO_DATA_API)
+                .addApi(Places.PLACE_DETECTION_API)
+                .build();
+        createLocationRequest();
+    }
+
+    private void createLocationRequest() {
+        mLocationRequest = new LocationRequest();
+
+
+        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS);
+
+        mLocationRequest.setFastestInterval(FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS);
+
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[],
+                                           @NonNull int[] grantResults) {
+        mLocationPermissionGranted = false;
         switch (requestCode) {
-            case MY_PERMISSION_ACCESS_FINE_LOCATION:
+            case PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION: {
+                // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permission Granted!", Toast.LENGTH_SHORT).show();
-                } else {
-                    Toast.makeText(this, "Permission Denied!", Toast.LENGTH_SHORT).show();
+                    mLocationPermissionGranted = true;
                 }
+            }
         }
+        updateLocationUI();
     }
+    @SuppressWarnings("MissingPermission")
+    private void updateLocationUI() {
+        if (mMap == null) {
+            return;
+        }
 
-    private void showExplanation(String title,
-                                 String message,
-                                 final String permission,
-                                 final int permissionRequestCode) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle(title)
-                .setMessage(message)
-                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        requestPermissions(new String[] {permission},permissionRequestCode);
-                    }
-                });
-        builder.create().show();
+        if (mLocationPermissionGranted) {
+            mMap.setMyLocationEnabled(true);
+            mMap.getUiSettings().setMyLocationButtonEnabled(true);
+        } else {
+            mMap.setMyLocationEnabled(false);
+            mMap.getUiSettings().setMyLocationButtonEnabled(false);
+            mCurrentLocation = null;
+        }
     }
 
     public Location getCurrentLocation(){
         Location net_loc = null, gps_loc = null, finalLoc = null;
         try{
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                        MY_PERMISSION_ACCESS_FINE_LOCATION);
+            if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
+                    android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED) {
+                mLocationPermissionGranted = true;
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
+                        PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION);
+            }
+        /*
+         * Get the best and most recent location of the device, which may be null in rare
+         * cases when a location is not available.
+         * Also request regular updates about the device location.
+         */
+            if (mLocationPermissionGranted) {
+                mCurrentLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
+                        mLocationRequest, this);
             }
             mMap.setMyLocationEnabled(true);
             LocationManager lm = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
@@ -214,6 +347,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
             network_enabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+
 
 
 
@@ -311,15 +445,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         Log.e("jsonData",data);
         return data;
     }
-    private class ParserTask extends AsyncTask<String, Integer, List<HashMap<String, String>>> {
+    private class ParserTask extends AsyncTask<String, Integer, List<PlacesDetails>> {
 
         JSONObject jObject;
 
         // Invoked by execute() method of this object
         @Override
-        protected List<HashMap<String, String>> doInBackground(String... jsonData) {
+        protected List<PlacesDetails> doInBackground(String... jsonData) {
 
-            List<HashMap<String, String>> places = null;
+            List<PlacesDetails> places = null;
             RestaurantJSON restaurantJSON = new RestaurantJSON();
 
             try {
@@ -336,9 +470,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         // Executed after the complete execution of doInBackground() method
         @Override
-        protected void onPostExecute(List<HashMap<String, String>> list) {
+        protected void onPostExecute(List<PlacesDetails> list) {
 
-            Log.d("Map", "list size: " + list.size());
             // Clears all the existing markers;
             mMap.clear();
 
@@ -348,22 +481,22 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 MarkerOptions markerOptions = new MarkerOptions();
 
                 // Getting a place from the places list
-                HashMap<String, String> hmPlace = list.get(i);
+                PlacesDetails pd2 = list.get(i);
 
 
                 // Getting latitude of the place
-                double lat = Double.parseDouble(hmPlace.get("lat"));
+                double lat = Double.parseDouble(pd2.getLatitude());
 
                 // Getting longitude of the place
-                double lng = Double.parseDouble(hmPlace.get("lng"));
+                double lng = Double.parseDouble(pd2.getLongitude());
 
                 // Getting name
-                String name = hmPlace.get("place_name");
+                String name = pd2.getPlaceName();
 
                 Log.d("Map", "place: " + name);
 
                 // Getting vicinity
-                String vicinity = hmPlace.get("vicinity");
+                String vicinity = pd2.getVicinity();
 
                 LatLng latLng = new LatLng(lat, lng);
 
