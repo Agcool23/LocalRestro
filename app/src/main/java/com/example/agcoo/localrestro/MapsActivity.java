@@ -96,6 +96,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 StringBuilder sbValue = new StringBuilder(placesApiForRestaurant());
+                Log.e("Api value",sbValue.toString());
                 RestaurantTask restaurantTask = new RestaurantTask();
                 restaurantTask.execute(sbValue.toString());
             }
@@ -307,6 +308,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             iStream.close();
             urlConnection.disconnect();
         }
+        Log.e("jsonData",data);
         return data;
     }
     private class ParserTask extends AsyncTask<String, Integer, List<HashMap<String, String>>> {
@@ -318,16 +320,17 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         protected List<HashMap<String, String>> doInBackground(String... jsonData) {
 
             List<HashMap<String, String>> places = null;
-            RestaurantJSON placeJson = new RestaurantJSON();
+            RestaurantJSON restaurantJSON = new RestaurantJSON();
 
             try {
                 jObject = new JSONObject(jsonData[0]);
 
-                places = placeJson.parse(jObject);
+                places = restaurantJSON.parse(jObject);
 
             } catch (Exception e) {
                 Log.d("Exception", e.toString());
             }
+            Log.e("Places", String.valueOf(places));
             return places;
         }
 
@@ -369,7 +372,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 markerOptions.title(name + " : " + vicinity);
 
-                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
 
                 // Placing a marker on the touched position
                 Marker m = mMap.addMarker(markerOptions);
