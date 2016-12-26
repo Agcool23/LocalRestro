@@ -1,14 +1,7 @@
 package com.example.agcoo.localrestro;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.location.Criteria;
-import android.location.Location;
-import android.location.LocationManager;
 import android.os.AsyncTask;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,12 +9,6 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
-
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
-
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -43,24 +30,13 @@ public class ListViewActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list_view);
-        /*listRestaurants = (ListView)findViewById(R.id.listViewRestaurants);
         pbarList = (ProgressBar)findViewById(R.id.progressBarList);
-        placesDetailslist = new ArrayList<>();
-        //populate this arraylist
+        listRestaurants = (ListView) findViewById(R.id.listViewRestaurants);
 
-        adapter= new ListViewAdapter(placesDetailslist,getApplicationContext());
-
-        listRestaurants.setAdapter(adapter);
-        listRestaurants.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                PlacesDetails dataModel= placesDetailslist.get(position);
-
-            }
-        });*/
         StringBuilder sbValue = new StringBuilder(placesApiForRestaurant());
         ListViewActivity.RestaurantTask restaurantTask = new ListViewActivity.RestaurantTask();
         restaurantTask.execute(sbValue.toString());
+        pbarList.setVisibility(View.INVISIBLE);
     }
     public StringBuilder placesApiForRestaurant() {
 
@@ -70,9 +46,9 @@ public class ListViewActivity extends AppCompatActivity {
 
         StringBuilder sb = new StringBuilder("https://maps.googleapis.com/maps/api/place/nearbysearch/json?");
         sb.append("location=" + latitude + "," + longitude);
-        sb.append("&rankby=distance");
+        sb.append("&radius=3000");
         sb.append("&types=" + "restaurant");
-        sb.append("&sensor=true");
+        //sb.append("&sensor=true");
         sb.append("&key=AIzaSyDmnA_SQsmHJCbre-ZJf-Xr18IuSM0KATU");
 
         return sb;
@@ -83,7 +59,6 @@ public class ListViewActivity extends AppCompatActivity {
 
         String data = null;
 
-        // Invoked by execute() method of this object
         @Override
         protected String doInBackground(String... url) {
             try {
@@ -94,13 +69,10 @@ public class ListViewActivity extends AppCompatActivity {
             return data;
         }
 
-        // Executed after the complete execution of doInBackground() method
         @Override
         protected void onPostExecute(String result) {
             ListViewActivity.ParserTask parserTask = new ListViewActivity.ParserTask();
 
-            // Start parsing the Google places in JSON format
-            // Invokes the "doInBackground()" method of the class ParserTask
             parserTask.execute(result);
         }
     }
@@ -140,6 +112,7 @@ public class ListViewActivity extends AppCompatActivity {
             iStream.close();
             urlConnection.disconnect();
         }
+        Log.e("JsonData",data);
         return data;
     }
     private class ParserTask extends AsyncTask<String, Integer, List<PlacesDetails>> {
@@ -174,6 +147,7 @@ public class ListViewActivity extends AppCompatActivity {
             placesDetailslist = new ArrayList<>();
             //populate this arraylist
             placesDetailslist.addAll(list);
+            Log.e("List",placesDetailslist.toString());
 
             adapter= new ListViewAdapter(placesDetailslist,getApplicationContext());
 

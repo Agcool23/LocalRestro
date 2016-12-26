@@ -1,6 +1,5 @@
 package com.example.agcoo.localrestro;
 
-import android.util.Log;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -49,7 +48,7 @@ public class RestaurantJSON {
                 pd.setLatitude(obj.getJSONObject("geometry").getJSONObject("location").getString("lat"));
                 pd.setLongitude(obj.getJSONObject("geometry").getJSONObject("location").getString("lng"));
                 pd.setReference(obj.getString("reference"));
-               // pd.setRating(obj.getString("rating"));
+                pd.setRating(obj.getString("rating"));
 
                 place.add(pd);
             } catch (JSONException e) {

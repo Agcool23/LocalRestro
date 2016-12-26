@@ -27,6 +27,7 @@ public class ListViewAdapter extends ArrayAdapter<PlacesDetails>implements View.
         TextView txtName;
         ImageView dp;
         RatingBar ratingBar;
+        TextView noData;
     }
     public ListViewAdapter(ArrayList<PlacesDetails> data, Context context) {
         super(context, R.layout.list_row, data);
@@ -62,6 +63,7 @@ public class ListViewAdapter extends ArrayAdapter<PlacesDetails>implements View.
             viewHolder.txtName = (TextView) convertView.findViewById(R.id.textViewName);
             viewHolder.ratingBar = (RatingBar) convertView.findViewById(R.id.ratingBar);
             viewHolder.dp = (ImageView) convertView.findViewById(R.id.restaurant_img);
+            viewHolder.noData = (TextView) convertView.findViewById(R.id.noDataTV);
 
             result=convertView;
 
@@ -75,7 +77,14 @@ public class ListViewAdapter extends ArrayAdapter<PlacesDetails>implements View.
         lastPosition = position;
 
         viewHolder.txtName.setText(dataModel.getPlaceName());
-        //viewHolder.ratingBar.setRating(Float.parseFloat(dataModel.getRating()));
+        if (dataModel.getRating() == null){
+            viewHolder.noData.setVisibility(View.VISIBLE);
+        }else {
+
+            viewHolder.ratingBar.setVisibility(View.VISIBLE);
+            viewHolder.ratingBar.setRating(Float.parseFloat(dataModel.getRating()));
+
+        }
         // Return the completed view to render on screen
         return convertView;
     }

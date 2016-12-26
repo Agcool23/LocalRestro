@@ -47,7 +47,7 @@
         android:src="@drawable/ic_action_location"
         android:elevation="6dp"
         app:pressedTranslationZ="12dp"
-        app:backgroundTint="@color/fab_color"
+        app:backgroundTint="@color/colorAccent"
         android:visibility="invisible"/>
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab"

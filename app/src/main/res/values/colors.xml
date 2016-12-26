@@ -5,4 +5,6 @@
     <color name="colorAccent">#FF4081</color>
     <color name="fab_color">#4CAF50</color>
     <color name="fab2_color">#2196F3</color>
+    <color name="fab3_color">#3bac0f</color>
+    <color name="listViewColor">#FFC8E0F2</color>
 </resources>
