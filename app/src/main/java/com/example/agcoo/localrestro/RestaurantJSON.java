@@ -29,7 +29,7 @@ public class RestaurantJSON {
 
     private List<PlacesDetails> getPlace(JSONArray jPlaces) {
 
-        List<PlacesDetails> place = new ArrayList<PlacesDetails>();
+        List<PlacesDetails> place = new ArrayList<>();
 
         JSONObject obj;
         for (int i = 0; i < jPlaces.length()-1; i++) {
@@ -50,6 +50,7 @@ public class RestaurantJSON {
                 pd.setLatitude(obj.getJSONObject("geometry").getJSONObject("location").getString("lat"));
                 pd.setLongitude(obj.getJSONObject("geometry").getJSONObject("location").getString("lng"));
                 pd.setReference(obj.getString("reference"));
+               // pd.setRating(obj.getString("rating"));
 
 
                 Log.d("pd", pd + "");

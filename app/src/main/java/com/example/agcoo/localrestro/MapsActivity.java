@@ -1,25 +1,39 @@
 package com.example.agcoo.localrestro;
 
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.RatingBar;
+import android.widget.TextView;
 
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
@@ -32,7 +46,6 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONObject;
@@ -43,6 +56,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -71,6 +85,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Location mCurrentLocation;
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
+    ViewPager viewPager;
+    ViewPagerAdapter adapter;
+    public static List<PlacesDetails> restaurantList1 = new ArrayList<>();
+    ProgressBar pBar;
+
 
 
     @Override
@@ -87,6 +106,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         FabClose = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fab_close);
         FabRClockWise = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.rotate_clockwise);
         FabRAntiClockWise = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.rotate_anticlockwise);
+        viewPager = (ViewPager)findViewById(R.id.viewpager) ;
+        pBar = (ProgressBar)findViewById(R.id.progressBar);
+        adapter = new ViewPagerAdapter(this);
+
+
 
         fab_plus.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -115,6 +139,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 Log.e("Api value",sbValue.toString());
                 RestaurantTask restaurantTask = new RestaurantTask();
                 restaurantTask.execute(sbValue.toString());
+                viewPager.setAdapter(adapter);
+                pBar.setVisibility(View.INVISIBLE);
             }
         });
         if (savedInstanceState != null) {
@@ -123,9 +149,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         // Retrieve the content view that renders the map.
         // Build the Play services client for use by the Fused Location Provider and the Places API.
-        buildGoogleApiClient();
-        mGoogleApiClient.connect();
-
+        if (CheckGooglePlayServices()) {
+            buildGoogleApiClient();
+            mGoogleApiClient.connect();
+        }
 
     }
     @Override
@@ -195,6 +222,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         }
+    }
+    private boolean CheckGooglePlayServices() {
+        GoogleApiAvailability googleAPI = GoogleApiAvailability.getInstance();
+        int result = googleAPI.isGooglePlayServicesAvailable(this);
+        if(result != ConnectionResult.SUCCESS) {
+            if(googleAPI.isUserResolvableError(result)) {
+                googleAPI.getErrorDialog(this, result,
+                        0).show();
+            }
+            return false;
+        }
+        return true;
     }
     @Override
     public void onConnected(Bundle connectionHint) {
@@ -347,6 +386,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             gps_enabled = lm.isProviderEnabled(LocationManager.GPS_PROVIDER);
             network_enabled = lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            if (!gps_enabled) {
+                displayPromptForEnablingGPS(this);
+            }
 
 
 
@@ -379,7 +421,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         return finalLoc;
 
+    }
+    public static void displayPromptForEnablingGPS(final Activity activity)
+    {
 
+        final AlertDialog.Builder builder =  new AlertDialog.Builder(activity);
+        final String action = Settings.ACTION_LOCATION_SOURCE_SETTINGS;
+        final String message = "Do you want open GPS setting?";
+
+        builder.setMessage(message)
+                .setPositiveButton("OK",
+                        new DialogInterface.OnClickListener(){
+                            public void onClick(DialogInterface d, int id) {
+                                activity.startActivity(new Intent(action));
+                                d.dismiss();
+                            }
+                        })
+                .setNegativeButton("Cancel",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface d, int id) {
+                                d.cancel();
+                            }
+                        });
+        builder.create().show();
     }
     private class RestaurantTask extends AsyncTask<String, Integer, String> {
 
@@ -453,19 +517,21 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         @Override
         protected List<PlacesDetails> doInBackground(String... jsonData) {
 
-            List<PlacesDetails> places = null;
+            List<PlacesDetails>restaurantList = null;
             RestaurantJSON restaurantJSON = new RestaurantJSON();
 
             try {
                 jObject = new JSONObject(jsonData[0]);
 
-                places = restaurantJSON.parse(jObject);
+                restaurantList = restaurantJSON.parse(jObject);
 
             } catch (Exception e) {
                 Log.d("Exception", e.toString());
             }
-            Log.e("Places", String.valueOf(places));
-            return places;
+            Log.e("Places", String.valueOf(restaurantList));
+            restaurantList1.addAll(restaurantList);
+
+            return restaurantList;
         }
 
         // Executed after the complete execution of doInBackground() method
@@ -505,13 +571,49 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 markerOptions.title(name + " : " + vicinity);
 
-                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE));
+                markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
 
                 // Placing a marker on the touched position
-                Marker m = mMap.addMarker(markerOptions);
+                mMap.addMarker(markerOptions);
 
             }
         }
+    }
+    public class ViewPagerAdapter extends PagerAdapter {
+
+        private LayoutInflater inflater;
+        private Context ctx;
+        private List<PlacesDetails> list = restaurantList1;
+
+        public ViewPagerAdapter(Context ctx){
+            this.ctx = ctx;
+        }
+        @Override
+        public int getCount() {
+            return list.size();
+        }
+
+        @Override
+        public boolean isViewFromObject(View view, Object object) {
+            return (view == (LinearLayout)object);
+        }
+
+        @Override
+        public Object instantiateItem(ViewGroup container, int position) {
+
+            inflater = (LayoutInflater) ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View item_view = inflater.inflate(R.layout.viewpager_layout,container,false);
+            ImageView imageView = (ImageView)item_view.findViewById(R.id.restaurant_img);
+            TextView textView = (TextView) item_view.findViewById(R.id.textViewName);
+            RatingBar ratingBar = (RatingBar) item_view.findViewById(R.id.ratingBar);
+            textView.setText(restaurantList1.get(position).getPlaceName());
+            ratingBar.setRating(Float.valueOf(restaurantList1.get(position).getRating()));
+            container.addView(item_view);
+            Log.d("restaurantlist",restaurantList1+"");
+
+            return item_view;
+        }
+
     }
 
 

@@ -7,21 +7,31 @@ import java.io.Serializable;
  */
 
 public class PlacesDetails implements Serializable{
-    String placeName = "-NA-";
-    String vicinity = "-NA-";
-    String latitude = "";
-    String longitude = "";
-    String reference = "";
+    String placeName;
+    String vicinity;
+    String latitude;
+    String longitude;
+    String reference;
+    String rating;
 
-    public PlacesDetails(String placeName, String vicinity, String latitude, String longitude, String reference) {
+    public PlacesDetails(String placeName, String vicinity, String latitude, String longitude, String reference, String rating) {
         this.placeName = placeName;
         this.vicinity = vicinity;
         this.latitude = latitude;
         this.longitude = longitude;
         this.reference = reference;
+        this.rating = rating;
     }
     public PlacesDetails(){
 
+    }
+
+    public String getRating() {
+        return rating;
+    }
+
+    public void setRating(String rating) {
+        this.rating = rating;
     }
 
     public String getPlaceName() {

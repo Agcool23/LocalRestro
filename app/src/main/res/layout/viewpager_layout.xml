@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    >
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scaleType="fitXY"
+        android:src="@drawable/img"
+        android:id="@+id/restaurant_img"
+        />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No Data Available"
+        android:textSize="20dp"
+        android:textColor="#000000"
+        android:textAlignment="center"
+        android:id="@+id/textViewName"
+        android:layout_marginTop="10dip"/>
+    <RatingBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below = "@id/textViewName"
+        android:layout_marginTop="20dip"
+        android:id="@+id/ratingBar"
+        android:numStars="5"
+        android:stepSize="0.5"
+        android:progressDrawable="@color/colorPrimary"
+        />
+
+</LinearLayout>
