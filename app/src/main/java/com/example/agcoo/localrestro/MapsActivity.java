@@ -64,7 +64,7 @@ import java.util.TimerTask;
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback,GoogleApiClient.ConnectionCallbacks,GoogleApiClient.OnConnectionFailedListener,LocationListener {
 
     private GoogleMap mMap;
-    FloatingActionButton fab_plus,fab_restaurant;
+    FloatingActionButton fab_plus,fab_restaurant,fab_location;
     Animation FabOpen,FabClose,FabRClockWise,FabRAntiClockWise;
     public double longitude;
     public double latitude;
@@ -85,10 +85,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private Location mCurrentLocation;
     private static final String KEY_CAMERA_POSITION = "camera_position";
     private static final String KEY_LOCATION = "location";
-    ViewPager viewPager;
-    ViewPagerAdapter adapter;
-    public static List<PlacesDetails> restaurantList1 = new ArrayList<>();
-    ProgressBar pBar;
 
 
 
@@ -102,13 +98,13 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
         fab_plus = (FloatingActionButton)findViewById(R.id.fab);
         fab_restaurant = (FloatingActionButton)findViewById(R.id.fab_restaurant);
+        fab_location = (FloatingActionButton)findViewById(R.id.fablocation);
         FabOpen = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fab_open);
         FabClose = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.fab_close);
         FabRClockWise = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.rotate_clockwise);
         FabRAntiClockWise = AnimationUtils.loadAnimation(getApplicationContext(),R.anim.rotate_anticlockwise);
-        viewPager = (ViewPager)findViewById(R.id.viewpager) ;
-        pBar = (ProgressBar)findViewById(R.id.progressBar);
-        adapter = new ViewPagerAdapter(this);
+
+
 
 
 
@@ -118,15 +114,19 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 if (isOpen)
                 {
                     fab_restaurant.startAnimation(FabClose);
+                    fab_location.startAnimation(FabClose);
                     fab_plus.startAnimation(FabRAntiClockWise);
                     fab_restaurant.setClickable(false);
+                    fab_location.setClickable(false);
                     isOpen = false;
                 }
                 else
                 {
                     fab_restaurant.startAnimation(FabOpen);
+                    fab_location.startAnimation(FabOpen);
                     fab_plus.startAnimation(FabRClockWise);
                     fab_restaurant.setClickable(true);
+                    fab_location.setClickable(true);
                     isOpen = true;
                 }
             }
@@ -135,13 +135,26 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         fab_restaurant.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
+                Location sendlocation = getCurrentLocation();
+                double lat = sendlocation.getLatitude();
+                double lng = sendlocation.getLongitude();
+               Intent in = new Intent(MapsActivity.this,ListViewActivity.class);
+                in.putExtra("key1",String.valueOf(lat));
+                in.putExtra("key2",String.valueOf(lng));
+                startActivity(in);
+
+            }
+        });
+        fab_location.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
                 StringBuilder sbValue = new StringBuilder(placesApiForRestaurant());
                 RestaurantTask restaurantTask = new RestaurantTask();
                 restaurantTask.execute(sbValue.toString());
-                viewPager.setAdapter(adapter);
-                pBar.setVisibility(View.INVISIBLE);
             }
         });
+
         if (savedInstanceState != null) {
             mCurrentLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
@@ -150,7 +163,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         if (CheckGooglePlayServices()) {
             buildGoogleApiClient();
             mGoogleApiClient.connect();
+
         }
+
 
     }
     @Override
@@ -388,29 +403,29 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
 
 
-        if (gps_enabled)
-            gps_loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-        if (network_enabled)
-            net_loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            if (gps_enabled)
+                gps_loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            if (network_enabled)
+                net_loc = lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
 
-        if (gps_loc != null && net_loc != null) {
+            if (gps_loc != null && net_loc != null) {
 
-            //smaller the number more accurate result will
-            if (gps_loc.getAccuracy() > net_loc.getAccuracy())
-                finalLoc = net_loc;
-            else
-                finalLoc = gps_loc;
+                //smaller the number more accurate result will
+                if (gps_loc.getAccuracy() > net_loc.getAccuracy())
+                    finalLoc = net_loc;
+                else
+                    finalLoc = gps_loc;
 
-            // I used this just to get an idea (if both avail, its upto you which you want to take as I've taken location with more accuracy)
+                // I used this just to get an idea (if both avail, its upto you which you want to take as I've taken location with more accuracy)
 
-        } else {
+            } else {
 
-            if (gps_loc != null) {
-                finalLoc = gps_loc;
-            } else if (net_loc != null) {
-                finalLoc = net_loc;
+                if (gps_loc != null) {
+                    finalLoc = gps_loc;
+                } else if (net_loc != null) {
+                    finalLoc = net_loc;
+                }
             }
-        }
         }catch (Exception ex){
             ex.fillInStackTrace();
         }
@@ -522,7 +537,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             } catch (Exception e) {
                 Log.d("Exception", e.toString());
             }
-            restaurantList1.addAll(restaurantList);
 
             return restaurantList;
         }
@@ -569,42 +583,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
             }
         }
-    }
-    public class ViewPagerAdapter extends PagerAdapter {
-
-        private LayoutInflater inflater;
-        private Context ctx;
-        private List<PlacesDetails> list = restaurantList1;
-
-        public ViewPagerAdapter(Context ctx){
-            this.ctx = ctx;
-        }
-        @Override
-        public int getCount() {
-            return list.size();
-        }
-
-        @Override
-        public boolean isViewFromObject(View view, Object object) {
-            return (view == (LinearLayout)object);
-        }
-
-        @Override
-        public Object instantiateItem(ViewGroup container, int position) {
-
-            inflater = (LayoutInflater) ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            View item_view = inflater.inflate(R.layout.viewpager_layout,container,false);
-            ImageView imageView = (ImageView)item_view.findViewById(R.id.restaurant_img);
-            TextView textView = (TextView) item_view.findViewById(R.id.textViewName);
-            RatingBar ratingBar = (RatingBar) item_view.findViewById(R.id.ratingBar);
-            textView.setText(restaurantList1.get(position).getPlaceName());
-            ratingBar.setRating(Float.valueOf(restaurantList1.get(position).getRating()));
-            container.addView(item_view);
-            Log.d("restaurantlist",restaurantList1+"");
-
-            return item_view;
-        }
-
     }
 
 
