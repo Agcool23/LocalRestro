@@ -136,7 +136,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             @Override
             public void onClick(View v) {
                 StringBuilder sbValue = new StringBuilder(placesApiForRestaurant());
-                Log.e("Api value",sbValue.toString());
                 RestaurantTask restaurantTask = new RestaurantTask();
                 restaurantTask.execute(sbValue.toString());
                 viewPager.setAdapter(adapter);
@@ -147,8 +146,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             mCurrentLocation = savedInstanceState.getParcelable(KEY_LOCATION);
             mCameraPosition = savedInstanceState.getParcelable(KEY_CAMERA_POSITION);
         }
-        // Retrieve the content view that renders the map.
-        // Build the Play services client for use by the Fused Location Provider and the Places API.
+
         if (CheckGooglePlayServices()) {
             buildGoogleApiClient();
             mGoogleApiClient.connect();
@@ -267,11 +265,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         updateLocationUI();
-        /*
-         * Set the map's camera position to the current location of the device.
-         * If the previous state was saved, set the position to the saved state.
-         * If the current location is unknown, use a default position and zoom value.
-         */
+
+
         if (mCameraPosition != null) {
             mMap.moveCamera(CameraUpdateFactory.newCameraPosition(mCameraPosition));
         } else if (mCurrentLocation != null) {
@@ -303,8 +298,8 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     private synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .enableAutoManage(this /* FragmentActivity */,
-                        this /* OnConnectionFailedListener */)
+                .enableAutoManage(this,
+                        this)
                 .addConnectionCallbacks(this)
                 .addApi(LocationServices.API)
                 .addApi(Places.GEO_DATA_API)
@@ -506,7 +501,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             iStream.close();
             urlConnection.disconnect();
         }
-        Log.e("jsonData",data);
         return data;
     }
     private class ParserTask extends AsyncTask<String, Integer, List<PlacesDetails>> {
@@ -528,7 +522,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             } catch (Exception e) {
                 Log.d("Exception", e.toString());
             }
-            Log.e("Places", String.valueOf(restaurantList));
             restaurantList1.addAll(restaurantList);
 
             return restaurantList;
@@ -558,8 +551,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
                 // Getting name
                 String name = pd2.getPlaceName();
-
-                Log.d("Map", "place: " + name);
 
                 // Getting vicinity
                 String vicinity = pd2.getVicinity();

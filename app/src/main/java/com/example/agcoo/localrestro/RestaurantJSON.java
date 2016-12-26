@@ -37,7 +37,6 @@ public class RestaurantJSON {
 
                 obj = jPlaces.getJSONObject(i);
                 PlacesDetails pd = new PlacesDetails();
-                Log.d("obj", obj + "");
                 for (int k = 0; k<obj.length();k++)
                 if (!obj.isNull("name")) {
                     pd.setPlaceName(obj.getString("name"));
@@ -52,14 +51,11 @@ public class RestaurantJSON {
                 pd.setReference(obj.getString("reference"));
                // pd.setRating(obj.getString("rating"));
 
-
-                Log.d("pd", pd + "");
                 place.add(pd);
             } catch (JSONException e) {
                 e.printStackTrace();
             }
         }
-        Log.d("List",place+"");
         return place;
     }
 }
